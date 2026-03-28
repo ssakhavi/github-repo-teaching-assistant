@@ -1,0 +1,1121 @@
+#!/usr/bin/env python3
+"""
+GitHub Training Assistant — Terminal Interface
+
+Usage:
+    uv run python src/terminal_interface.py                      # repo menu → latest lesson
+    uv run python src/terminal_interface.py <repo>               # specific repo, latest lesson
+    uv run python src/terminal_interface.py <repo> 0             # background assessment
+    uv run python src/terminal_interface.py <repo> 3             # lesson 3
+"""
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+try:
+    from rich import box
+    from rich.align import Align
+    from rich.console import Console
+    from rich.markdown import Markdown
+    from rich.panel import Panel
+    from rich.rule import Rule
+    from rich.syntax import Syntax
+    from rich.table import Table
+    from rich.text import Text
+except ImportError:
+    print("Missing dependency: rich\nRun: uv add rich")
+    sys.exit(1)
+
+try:
+    import readchar
+
+    _READCHAR_AVAILABLE = True
+except ImportError:
+    _READCHAR_AVAILABLE = False
+
+console = Console()
+
+# ── Layout ─────────────────────────────────────────────────────────────────────
+
+MAX_CONTENT_WIDTH = 90
+
+
+def _cw() -> int:
+    return min(console.width, MAX_CONTENT_WIDTH)
+
+
+def _cp(renderable, *, top: int = 0, bottom: int = 0):
+    for _ in range(top):
+        console.print()
+    console.print(Align.center(renderable))
+    for _ in range(bottom):
+        console.print()
+
+
+def _panel(content, *, style: str = "", box_style=box.ROUNDED, padding=(0, 2), **kwargs) -> Panel:
+    return Panel(content, style=style, box=box_style, padding=padding, width=_cw(), **kwargs)
+
+
+def _rule(title: str = "", style: str = "dim") -> Rule:
+    return Rule(title, style=style)
+
+
+# ── Path Helpers ───────────────────────────────────────────────────────────────
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def _input_dir() -> Path:
+    p = _project_root() / "input"
+    p.mkdir(exist_ok=True)
+    return p
+
+
+def _training_dir(repo: str) -> Path:
+    p = _project_root() / "training" / repo
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _lesson_dir(repo: str, n: int) -> Path:
+    return _training_dir(repo) / "lessons" / f"lesson_{n}"
+
+
+def _results_dir(repo: str) -> Path:
+    p = _training_dir(repo) / "results"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _background_file(repo: str) -> Path:
+    return _results_dir(repo) / "lesson_0_background.json"
+
+
+# ── Terminal Utilities ─────────────────────────────────────────────────────────
+
+
+def clear():
+    console.clear()
+
+
+def wait_for_enter(msg: str = "Press [bold cyan]ENTER[/] to continue..."):
+    console.print()
+    console.print(Align.center(Text.from_markup(f"  {msg}  ")))
+    try:
+        input()
+    except EOFError:
+        pass
+
+
+def read_single_key(valid: set) -> str:
+    valid_upper = {k.upper() for k in valid}
+    if _READCHAR_AVAILABLE:
+        while True:
+            try:
+                ch = readchar.readkey().upper()
+            except KeyboardInterrupt:
+                raise
+            if ch in valid_upper:
+                return ch
+    else:
+        while True:
+            try:
+                raw = input(f"  Answer ({'/'.join(sorted(valid_upper))}): ").strip().upper()
+            except (KeyboardInterrupt, EOFError):
+                raise KeyboardInterrupt
+            if raw in valid_upper:
+                return raw
+            valid_str = ", ".join(sorted(valid_upper))
+            console.print(Align.center(f"[red]Invalid — enter one of: {valid_str}[/]"))
+
+
+def get_editor() -> str:
+    return os.environ.get("EDITOR", "nano")
+
+
+# ── Repository Discovery ───────────────────────────────────────────────────────
+
+
+def find_repos() -> list:
+    """Return sorted list of repo names that have a txt file in input/."""
+    return sorted(p.stem for p in _input_dir().glob("*.txt") if p.stem != ".gitkeep")
+
+
+def find_latest_lesson(repo: str) -> Optional[int]:
+    lessons_dir = _training_dir(repo) / "lessons"
+    if not lessons_dir.exists():
+        return None
+    numbers = []
+    for d in lessons_dir.iterdir():
+        if d.is_dir() and d.name.startswith("lesson_"):
+            try:
+                n = int(d.name.split("_")[1])
+                if n > 0:
+                    numbers.append(n)
+            except (IndexError, ValueError):
+                pass
+    return max(numbers) if numbers else None
+
+
+def select_repo_menu() -> Optional[str]:
+    """Show an interactive repo selection menu. Returns chosen repo name or None."""
+    repos = find_repos()
+
+    if not repos:
+        clear()
+        _cp(
+            _panel(
+                "[bold]GitHub Training Assistant[/]\n\n"
+                "[red]No repository files found.[/]\n\n"
+                "Place one or more [bold].txt[/] files (generated by [cyan]git-ingest[/])\n"
+                "into the [bold]input/[/] folder, then run this again.\n\n"
+                "[dim]Example:[/]\n"
+                "[dim]  gitingest https://github.com/user/repo --output input/my-repo.txt[/]",
+                style="blue",
+                box_style=box.DOUBLE_EDGE,
+                padding=(1, 4),
+            ),
+            top=1,
+        )
+        return None
+
+    if len(repos) == 1:
+        return repos[0]
+
+    # Multiple repos — show selection menu
+    clear()
+    _cp(
+        _panel(
+            "[bold]GitHub Training Assistant[/]\n\n[bold cyan]Select a Repository[/]",
+            style="bold blue",
+            box_style=box.DOUBLE_EDGE,
+            padding=(1, 4),
+        ),
+        top=1,
+        bottom=1,
+    )
+
+    valid_nums = set()
+    for i, repo in enumerate(repos, 1):
+        # Show lesson progress if any
+        latest = find_latest_lesson(repo)
+        progress = (
+            f"[dim]  (lesson {latest} in progress)[/]" if latest else "[dim]  (not started)[/]"
+        )
+        console.print(Align.center(f"   [bold cyan]{i}[/]   [bold]{repo}[/]{progress}"))
+        valid_nums.add(str(i))
+
+    console.print()
+    console.print(Align.center(f"[dim]Press 1–{len(repos)} to select...[/]"))
+
+    key = read_single_key(valid_nums)
+    chosen = repos[int(key) - 1]
+    console.print()
+    console.print(Align.center(f"[green]✓[/]  {chosen}"))
+    return chosen
+
+
+# ── Phase 1: Lesson Pages ──────────────────────────────────────────────────────
+
+
+def load_pages(repo: str, lesson_n: int) -> list:
+    path = _lesson_dir(repo, lesson_n) / "lesson.md"
+    if not path.exists():
+        _cp(_panel(f"[red]lesson.md not found: {path}[/]", box_style=box.MINIMAL), top=2)
+        sys.exit(1)
+    raw = path.read_text(encoding="utf-8")
+    pages, current = [], []
+    for line in raw.splitlines():
+        if line.strip() == "---":
+            text = "\n".join(current).strip()
+            if text:
+                pages.append(text)
+            current = []
+        else:
+            current.append(line)
+    tail = "\n".join(current).strip()
+    if tail:
+        pages.append(tail)
+    return pages
+
+
+def show_lesson_pages(repo: str, pages: list, lesson_n: int):
+    total = len(pages)
+    for i, page in enumerate(pages, 1):
+        clear()
+
+        filled = round((_cw() - 10) * i / total)
+        empty = (_cw() - 10) - filled
+        progress_line = f"[cyan]{'━' * filled}[/][dim]{'─' * empty}[/]  [dim]{i}/{total}[/]"
+
+        _cp(
+            _panel(
+                f"[bold dim]{repo}[/]  [dim]·[/]  "
+                f"[bold]Lesson [cyan]{lesson_n}[/][/]  [dim]·  Page {i} of {total}[/]",
+                style="blue",
+                box_style=box.ROUNDED,
+            ),
+            top=1,
+        )
+        console.print()
+        console.print(Align.center(progress_line))
+        console.print()
+
+        _cp(Panel(Markdown(page), box=box.MINIMAL, padding=(0, 3), width=_cw()))
+
+        console.print()
+        _cp(_rule())
+        if i < total:
+            wait_for_enter()
+        else:
+            wait_for_enter(
+                "Lesson complete!  Press [bold cyan]ENTER[/] to start coding exercises..."
+            )
+
+
+# ── Phase 2: Code Examples ─────────────────────────────────────────────────────
+
+
+def load_examples(repo: str, lesson_n: int) -> dict:
+    path = _lesson_dir(repo, lesson_n) / "examples.json"
+    if not path.exists():
+        _cp(_panel(f"[red]examples.json not found: {path}[/]", box_style=box.MINIMAL), top=2)
+        sys.exit(1)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _run_tests(user_code: str, tests: list) -> tuple:
+    results = []
+    for t in tests:
+        combined = user_code.rstrip() + "\n\n" + t["code"]
+        try:
+            proc = subprocess.run(
+                [sys.executable, "-c", combined],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            passed = proc.returncode == 0
+            stderr = proc.stderr.strip()
+            if stderr and len(stderr) > 400:
+                stderr = stderr[-400:]
+        except subprocess.TimeoutExpired:
+            passed, stderr = False, "Execution timed out (10 s limit)"
+        except Exception as e:
+            passed, stderr = False, str(e)
+        results.append({"description": t["description"], "passed": passed, "error": stderr})
+    return all(r["passed"] for r in results), results
+
+
+def _print_test_results(test_results: list):
+    tbl = Table(box=box.SIMPLE, show_header=True, header_style="bold", width=_cw() - 4)
+    tbl.add_column("Test", style="dim")
+    tbl.add_column("Result", justify="center", width=8)
+    tbl.add_column("Detail")
+    for r in test_results:
+        status = "[bold green]PASS[/]" if r["passed"] else "[bold red]FAIL[/]"
+        detail = r["error"] if not r["passed"] else "[dim]—[/]"
+        tbl.add_row(r["description"], status, detail)
+    _cp(tbl)
+
+
+def _open_in_editor(initial_code: str) -> str:
+    editor = get_editor()
+    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False, encoding="utf-8") as f:
+        f.write(initial_code)
+        tmp = f.name
+    try:
+        subprocess.run([editor, tmp])
+    except FileNotFoundError:
+        console.print(Align.center(f"[yellow]Editor '{editor}' not found — trying nano...[/]"))
+        try:
+            subprocess.run(["nano", tmp])
+        except FileNotFoundError:
+            console.print(
+                Align.center("[red]No editor found. Set EDITOR (e.g. export EDITOR=vim)[/]")
+            )
+            os.unlink(tmp)
+            return initial_code
+    code = Path(tmp).read_text(encoding="utf-8")
+    os.unlink(tmp)
+    return code
+
+
+def run_example(ex: dict, ex_num: int, total_ex: int) -> dict:
+    ex_id = ex["id"]
+    ex_type = ex["type"].replace("_", " ")
+    title = ex["title"]
+    description = ex["description"]
+    template = ex["template"]
+    solution = ex["solution"]
+    tests = ex["tests"]
+
+    start_time = time.time()
+    attempts, passed = 0, False
+    current_code = template
+
+    while True:
+        clear()
+        _cp(
+            _panel(
+                f"[bold yellow]Exercise {ex_num} of {total_ex}[/]  [dim]·[/]  "
+                f"[bold]{title}[/]  [dim]{ex_type}[/]",
+                style="yellow",
+                box_style=box.ROUNDED,
+            ),
+            top=1,
+        )
+        console.print()
+        _cp(
+            Panel(
+                Markdown(f"**What to do:** {description}"),
+                box=box.MINIMAL,
+                width=_cw(),
+                padding=(0, 3),
+            )
+        )
+        console.print()
+        _cp(_rule("Template", style="dim yellow"))
+        _cp(
+            Syntax(current_code, "python", theme="monokai", line_numbers=True, code_width=_cw() - 8)
+        )
+        console.print()
+        _cp(_rule())
+        console.print()
+
+        if attempts == 0:
+            hint = "[bold cyan]ENTER[/] open editor   [bold red]q[/] skip"
+        else:
+            hint = (
+                "[bold cyan]ENTER[/] edit again   "
+                "[bold yellow]s[/] show solution   [bold red]q[/] skip"
+            )
+        console.print(Align.center(hint))
+        console.print()
+
+        try:
+            choice = input("  > ").strip().lower()
+        except (KeyboardInterrupt, EOFError):
+            raise KeyboardInterrupt
+
+        if choice == "q":
+            _cp(
+                _panel("[dim]Exercise skipped.[/]", box_style=box.MINIMAL, padding=(0, 2)), bottom=1
+            )
+            wait_for_enter()
+            break
+
+        if choice == "s" and attempts > 0:
+            clear()
+            _cp(
+                _panel(f"[bold green]Solution — {title}[/]", style="green", box_style=box.ROUNDED),
+                top=1,
+                bottom=1,
+            )
+            _cp(
+                Syntax(solution, "python", theme="monokai", line_numbers=True, code_width=_cw() - 8)
+            )
+            wait_for_enter()
+            break
+
+        edited = _open_in_editor(current_code)
+        current_code = edited
+        attempts += 1
+
+        clear()
+        _cp(_rule("Running tests...", style="cyan"), top=1)
+        console.print()
+        all_passed, test_results = _run_tests(edited, tests)
+        _print_test_results(test_results)
+
+        if all_passed:
+            passed = True
+            console.print()
+            _cp(
+                _panel(
+                    f"[bold green]All {len(tests)} test(s) passed![/]  Attempt {attempts}.  Nice work.",
+                    style="green",
+                    box_style=box.ROUNDED,
+                )
+            )
+            wait_for_enter()
+            break
+        else:
+            failed = sum(1 for r in test_results if not r["passed"])
+            console.print()
+            _cp(
+                _panel(
+                    f"[bold red]{failed} test(s) failed.[/]  Review the errors above and try again.",
+                    style="red",
+                    box_style=box.MINIMAL,
+                )
+            )
+            wait_for_enter()
+
+    return {
+        "id": ex_id,
+        "passed": passed,
+        "attempts": attempts,
+        "time_seconds": int(time.time() - start_time),
+    }
+
+
+def run_all_examples(repo: str, examples_data: dict, lesson_n: int) -> list:
+    examples = examples_data.get("examples", [])
+    total = len(examples)
+
+    clear()
+    _cp(
+        _panel(
+            f"[bold yellow]Coding Exercises[/]\n"
+            f"[dim]{total} exercise(s) — {repo} · Lesson {lesson_n}[/]",
+            style="yellow",
+            box_style=box.DOUBLE_EDGE,
+            padding=(1, 4),
+        ),
+        top=1,
+        bottom=1,
+    )
+    console.print(
+        Align.center("  Write code in your editor — it will be run with automated tests.")
+    )
+    console.print(
+        Align.center("  After your first attempt, type [bold yellow]s[/] to reveal the solution.")
+    )
+    wait_for_enter("Press [bold cyan]ENTER[/] to start the first exercise...")
+
+    results = []
+    for i, ex in enumerate(examples, 1):
+        results.append(run_example(ex, i, total))
+    return results
+
+
+# ── Feedback Collection ────────────────────────────────────────────────────────
+
+
+def collect_feedback(section: str) -> Optional[str]:
+    """
+    Prompt for free-text feedback after a section.
+    Returns the typed text, or None if the user skipped.
+    """
+    console.print()
+    _cp(_rule("Your Feedback", style="dim"))
+    console.print()
+    _cp(
+        Panel(
+            Markdown(
+                f"**Any thoughts, questions, or confusion about the {section}?**\n\n"
+                "Your feedback will be read when generating your next lesson blueprint.\n"
+                "[dim]Examples: 'I didn't understand why X works this way', "
+                "'Question 3 felt ambiguous', 'I'd like more on Y'[/dim]"
+            ),
+            box=box.MINIMAL,
+            width=_cw(),
+            padding=(0, 3),
+        )
+    )
+    console.print(
+        Align.center("[dim]Write your feedback and press ENTER — or just press ENTER to skip.[/]")
+    )
+    console.print()
+    try:
+        text = input("  > ").strip()
+    except (KeyboardInterrupt, EOFError):
+        raise KeyboardInterrupt
+    if text:
+        console.print()
+        console.print(Align.center("[green]✓[/]  Feedback saved."))
+    return text if text else None
+
+
+# ── Phase 3: MCQ ───────────────────────────────────────────────────────────────
+
+
+def load_mcq(repo: str, lesson_n: int) -> dict:
+    path = _lesson_dir(repo, lesson_n) / "mcq.json"
+    if not path.exists():
+        _cp(_panel(f"[red]mcq.json not found: {path}[/]", box_style=box.MINIMAL), top=2)
+        sys.exit(1)
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def run_mcq_question(q: dict, q_num: int, total: int) -> dict:
+    q_id = q["id"]
+    question = q["question"]
+    options = dict(q["options"])
+    correct = q["correct_answer"].upper()
+    explanation = q["explanation"]
+
+    if "E" not in options:
+        options["E"] = "I don't know"
+
+    t0 = time.time()
+    clear()
+
+    _cp(
+        _panel(
+            f"[bold]Question [magenta]{q_num}[/] of [magenta]{total}[/][/]",
+            style="magenta",
+            box_style=box.ROUNDED,
+        ),
+        top=1,
+    )
+    console.print()
+    _cp(Panel(Markdown(f"**{question}**"), box=box.MINIMAL, width=_cw(), padding=(0, 3)))
+    console.print()
+
+    lines = []
+    for key in ["A", "B", "C", "D"]:
+        if key in options:
+            lines.append(f"   [bold cyan]{key}[/]   {options[key]}")
+    lines.append("")
+    lines.append(f"   [bold dim]E[/]   [dim]{options['E']}[/]")
+    _cp(Panel("\n".join(lines), box=box.MINIMAL, width=_cw(), padding=(0, 2)))
+    console.print()
+    _cp(_rule())
+    console.print()
+
+    hint = (
+        "[dim]Press A, B, C, D, or E...[/]"
+        if _READCHAR_AVAILABLE
+        else "[dim]Type A–E and press ENTER.[/]"
+    )
+    console.print(Align.center(hint))
+
+    valid = {k for k in ["A", "B", "C", "D", "E"] if k in options}
+    answer = read_single_key(valid)
+    elapsed = int(time.time() - t0)
+
+    is_correct = answer == correct
+    i_dont_know = answer == "E"
+
+    console.print()
+    if is_correct:
+        feedback = f"[bold green]Correct![/]  You answered [bold]{answer}[/]."
+        style = "green"
+    elif i_dont_know:
+        feedback = (
+            f"[bold dim]The correct answer was [bold green]{correct}[/].[/]\n"
+            "This topic will be reinforced in the next lesson."
+        )
+        style = "dim"
+    else:
+        feedback = (
+            f"[bold red]Incorrect.[/]  You answered [bold]{answer}[/]."
+            f"  Correct answer: [bold green]{correct}[/]."
+        )
+        style = "red"
+
+    _cp(_panel(feedback, style=style, box_style=box.ROUNDED))
+    console.print()
+    _cp(
+        Panel(
+            Markdown(f"**Explanation:** {explanation}"),
+            box=box.MINIMAL,
+            width=_cw(),
+            padding=(0, 3),
+        )
+    )
+    wait_for_enter()
+
+    return {
+        "id": q_id,
+        "answer": answer,
+        "correct": is_correct,
+        "i_dont_know": i_dont_know,
+        "time_seconds": elapsed,
+    }
+
+
+def run_all_mcq(repo: str, mcq_data: dict, lesson_n: int) -> list:
+    questions = mcq_data.get("questions", [])
+    total = len(questions)
+
+    clear()
+    _cp(
+        _panel(
+            f"[bold magenta]Multiple Choice Questions[/]\n"
+            f"[dim]{total} question(s) — {repo} · Lesson {lesson_n}[/]",
+            style="magenta",
+            box_style=box.DOUBLE_EDGE,
+            padding=(1, 4),
+        ),
+        top=1,
+        bottom=1,
+    )
+    console.print(Align.center("  Answer each question, then read the explanation."))
+    console.print(Align.center("  Select [bold dim]E[/] — 'I don't know' — if you're unsure."))
+    console.print(Align.center("  Your responses calibrate the next lesson's blueprint."))
+    wait_for_enter("Press [bold cyan]ENTER[/] to start the quiz...")
+
+    results = []
+    for i, q in enumerate(questions, 1):
+        results.append(run_mcq_question(q, i, total))
+    return results
+
+
+# ── Phase 4: Summary & Save ────────────────────────────────────────────────────
+
+
+def show_summary(repo: str, lesson_n: int, ex_results: list, mcq_results: list):
+    ex_passed = sum(1 for r in ex_results if r["passed"])
+    ex_skipped = sum(1 for r in ex_results if r["attempts"] == 0)
+    ex_total = len(ex_results)
+    mcq_correct = sum(1 for r in mcq_results if r["correct"])
+    mcq_dont_know = sum(1 for r in mcq_results if r.get("i_dont_know"))
+    mcq_total = len(mcq_results)
+    mcq_pct = int(100 * mcq_correct / mcq_total) if mcq_total else 0
+
+    clear()
+    _cp(
+        _panel(
+            f"[bold green]Lesson {lesson_n} Complete![/]\n[dim]{repo}[/]",
+            style="bold green",
+            box_style=box.DOUBLE_EDGE,
+            padding=(1, 4),
+        ),
+        top=1,
+    )
+
+    console.print()
+    _cp(_rule("Coding Exercises", style="yellow"))
+    console.print()
+    ex_tbl = Table(box=box.SIMPLE, show_header=True, header_style="bold", width=_cw() - 4)
+    ex_tbl.add_column("Exercise")
+    ex_tbl.add_column("Result", justify="center")
+    ex_tbl.add_column("Attempts", justify="right")
+    ex_tbl.add_column("Time", justify="right")
+    for r in ex_results:
+        if r["passed"]:
+            status = "[green]Passed[/]"
+        elif r["attempts"] == 0:
+            status = "[dim]Skipped[/]"
+        else:
+            status = "[red]Failed[/]"
+        attempts = str(r["attempts"]) if r["attempts"] > 0 else "[dim]—[/]"
+        ex_tbl.add_row(f"Exercise {r['id']}", status, attempts, f"{r['time_seconds']}s")
+    _cp(ex_tbl)
+    ex_color = "green" if ex_passed == ex_total else "yellow" if ex_passed > 0 else "red"
+    lines = [f"  [{ex_color}][bold]{ex_passed} / {ex_total}[/][/] exercises passed"]
+    if ex_skipped:
+        lines.append(f"  [dim]{ex_skipped} skipped — will be flagged in next blueprint[/]")
+    console.print(Align.center("\n".join(lines)))
+
+    console.print()
+    _cp(_rule("Multiple Choice Questions", style="magenta"))
+    console.print()
+    mcq_tbl = Table(box=box.SIMPLE, show_header=True, header_style="bold", width=_cw() - 4)
+    mcq_tbl.add_column("Question")
+    mcq_tbl.add_column("Answer", justify="center")
+    mcq_tbl.add_column("Result", justify="center")
+    mcq_tbl.add_column("Time", justify="right")
+    for r in mcq_results:
+        if r["correct"]:
+            result_str = "[green]Correct[/]"
+        elif r.get("i_dont_know"):
+            result_str = "[dim]Don't know[/]"
+        else:
+            result_str = "[red]Wrong[/]"
+        mcq_tbl.add_row(f"Q{r['id']}", r["answer"], result_str, f"{r['time_seconds']}s")
+    _cp(mcq_tbl)
+    mcq_color = "green" if mcq_pct >= 80 else "yellow" if mcq_pct >= 50 else "red"
+    mcq_lines = [f"  [{mcq_color}][bold]{mcq_correct} / {mcq_total}[/][/] correct  ({mcq_pct}%)"]
+    if mcq_dont_know:
+        mcq_lines.append(
+            f"  [dim]{mcq_dont_know} 'I don't know' answer(s) — will be reinforced next lesson[/]"
+        )
+    console.print(Align.center("\n".join(mcq_lines)))
+
+    console.print()
+    if ex_passed == ex_total and ex_skipped == 0 and mcq_pct >= 80:
+        verdict = (
+            "[bold green]Excellent work![/]  You've mastered this lesson.\n"
+            "Run [bold cyan]/next-lesson[/] in Claude Code to generate the next lesson."
+        )
+        verdict_style = "green"
+    elif ex_passed >= max(ex_total - ex_skipped - 1, 0) and mcq_pct >= 60:
+        verdict = (
+            "[bold yellow]Good progress![/]  Skipped and unknown topics will be reinforced.\n"
+            "Run [bold cyan]/next-lesson[/] when you're ready to continue."
+        )
+        verdict_style = "yellow"
+    else:
+        verdict = (
+            "[bold red]Keep at it![/]  Consider re-reading the lesson before advancing.\n"
+            "Run [bold cyan]/next-lesson[/] when ready — difficult concepts will be revisited."
+        )
+        verdict_style = "red"
+    _cp(_panel(verdict, style=verdict_style, box_style=box.ROUNDED, padding=(1, 3)), bottom=1)
+
+
+def save_results(
+    repo: str,
+    lesson_n: int,
+    started_at: str,
+    ex_results: list,
+    mcq_results: list,
+    examples_feedback: Optional[str],
+    mcq_feedback: Optional[str],
+):
+    ex_passed = sum(1 for r in ex_results if r["passed"])
+    ex_skipped = sum(1 for r in ex_results if r["attempts"] == 0)
+    mcq_correct = sum(1 for r in mcq_results if r["correct"])
+    mcq_dont_know = sum(1 for r in mcq_results if r.get("i_dont_know"))
+    payload = {
+        "repo": repo,
+        "lesson": lesson_n,
+        "started_at": started_at,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "examples": ex_results,
+        "mcq": mcq_results,
+        "score": {
+            "examples_passed": ex_passed,
+            "examples_skipped": ex_skipped,
+            "examples_total": len(ex_results),
+            "mcq_correct": mcq_correct,
+            "mcq_dont_know": mcq_dont_know,
+            "mcq_total": len(mcq_results),
+        },
+        "feedback": {
+            "examples": examples_feedback,
+            "mcq": mcq_feedback,
+        },
+    }
+    out = _results_dir(repo) / f"lesson_{lesson_n}_results.json"
+    out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    console.print(Align.center(f"[dim]Results saved → {out}[/]"))
+
+
+# ── Lesson 0: Background Assessment ───────────────────────────────────────────
+
+
+def run_background_assessment(repo: str):
+    clear()
+    _cp(
+        _panel(
+            "[bold]GitHub Training Assistant[/]\n\n"
+            f"[bold cyan]Background Assessment — {repo}[/]\n\n"
+            "Answer a few quick questions so your curriculum\n"
+            "can be calibrated to your experience level.\n"
+            "[dim]Takes about 2 minutes.[/]",
+            style="blue",
+            box_style=box.DOUBLE_EDGE,
+            padding=(1, 6),
+        ),
+        top=1,
+    )
+    wait_for_enter()
+
+    answers: dict = {}
+
+    def _q_header(num: int, of: int):
+        _cp(
+            _panel(
+                f"[bold]Question [cyan]{num}[/] of [cyan]{of}[/][/]",
+                style="blue",
+                box_style=box.ROUNDED,
+                padding=(0, 2),
+            ),
+            top=1,
+        )
+
+    # Q1
+    clear()
+    _q_header(1, 4)
+    console.print()
+    _cp(
+        Panel(
+            Markdown("**How would you describe your overall programming experience?**"),
+            box=box.MINIMAL,
+            width=_cw(),
+            padding=(0, 3),
+        )
+    )
+    console.print()
+    for k, lbl in [
+        ("A", "Beginner       — less than 1 year"),
+        ("B", "Intermediate   — 1–3 years"),
+        ("C", "Experienced    — 3–7 years"),
+        ("D", "Senior         — 7+ years"),
+    ]:
+        console.print(Align.center(f"   [bold cyan]{k}[/]   {lbl}"))
+    console.print()
+    console.print(Align.center("[dim]Press A, B, C, or D...[/]"))
+    exp_map = {"A": "beginner", "B": "intermediate", "C": "experienced", "D": "senior"}
+    key = read_single_key({"A", "B", "C", "D"})
+    answers["programming_experience"] = exp_map[key]
+    console.print()
+    console.print(Align.center(f"[green]✓[/]  {exp_map[key].title()}"))
+    wait_for_enter()
+
+    # Q2
+    clear()
+    _q_header(2, 4)
+    console.print()
+    _cp(
+        Panel(
+            Markdown("**How comfortable are you navigating a codebase you've never seen before?**"),
+            box=box.MINIMAL,
+            width=_cw(),
+            padding=(0, 3),
+        )
+    )
+    console.print()
+    for k, lbl in [
+        ("1", "Very uncomfortable — I need a lot of guidance"),
+        ("2", "Somewhat uncomfortable — finding things takes time"),
+        ("3", "Neutral — I get around but don't always know where to look"),
+        ("4", "Comfortable — I navigate most codebases well"),
+        ("5", "Very comfortable — reading unfamiliar code is natural"),
+    ]:
+        console.print(Align.center(f"   [bold cyan]{k}[/]   {lbl}"))
+    console.print()
+    console.print(Align.center("[dim]Press 1–5...[/]"))
+    comfort = read_single_key({"1", "2", "3", "4", "5"})
+    answers["codebase_comfort"] = int(comfort)
+    console.print()
+    console.print(Align.center(f"[green]✓[/]  {comfort} / 5"))
+    wait_for_enter()
+
+    # Q3
+    clear()
+    _q_header(3, 4)
+    console.print()
+    _cp(
+        Panel(
+            Markdown("**What is your primary goal for this training?**"),
+            box=box.MINIMAL,
+            width=_cw(),
+            padding=(0, 3),
+        )
+    )
+    console.print()
+    for k, lbl in [
+        ("A", "Understand this codebase so I can contribute to it"),
+        ("B", "Learn the technologies and patterns it uses"),
+        ("C", "Use it as a reference for building something similar"),
+        ("D", "General exploration and curiosity"),
+    ]:
+        console.print(Align.center(f"   [bold cyan]{k}[/]   {lbl}"))
+    console.print()
+    console.print(Align.center("[dim]Press A, B, C, or D...[/]"))
+    goal_map = {
+        "A": "contribute",
+        "B": "learn_technology",
+        "C": "build_similar",
+        "D": "exploration",
+    }
+    key = read_single_key({"A", "B", "C", "D"})
+    answers["learning_goal"] = goal_map[key]
+    console.print()
+    console.print(Align.center(f"[green]✓[/]  {goal_map[key].replace('_', ' ').title()}"))
+    wait_for_enter()
+
+    # Q4
+    clear()
+    _q_header(4, 4)
+    console.print()
+    _cp(
+        Panel(
+            Markdown("**Is there anything specific you want to focus on?** *(optional)*"),
+            box=box.MINIMAL,
+            width=_cw(),
+            padding=(0, 3),
+        )
+    )
+    console.print()
+    console.print(
+        Align.center(
+            "[dim]e.g. 'The API design', 'How the database layer works', 'The testing strategy'[/]"
+        )
+    )
+    console.print(Align.center("[dim]Press ENTER to skip.[/]"))
+    console.print()
+    try:
+        specific = input("  > ").strip()
+    except (KeyboardInterrupt, EOFError):
+        raise KeyboardInterrupt
+    answers["specific_interests"] = specific if specific else None
+    answers["completed_at"] = datetime.now(timezone.utc).isoformat()
+    _background_file(repo).write_text(json.dumps(answers, indent=2), encoding="utf-8")
+
+    # Summary
+    clear()
+    _cp(
+        _panel(
+            f"[bold green]Background Assessment Complete — {repo}[/]",
+            style="green",
+            box_style=box.DOUBLE_EDGE,
+            padding=(1, 4),
+        ),
+        top=1,
+        bottom=1,
+    )
+    tbl = Table(box=box.SIMPLE, show_header=False, padding=(0, 2), width=_cw() - 8)
+    tbl.add_column("Field", style="dim")
+    tbl.add_column("Answer", style="bold")
+    tbl.add_row("Programming experience", answers["programming_experience"].title())
+    tbl.add_row("Codebase comfort", f"{answers['codebase_comfort']} / 5")
+    tbl.add_row("Learning goal", answers["learning_goal"].replace("_", " ").title())
+    if answers["specific_interests"]:
+        tbl.add_row("Specific interests", answers["specific_interests"])
+    _cp(tbl, bottom=1)
+    _cp(
+        _panel(
+            "Your profile has been saved.\n\n"
+            "Now run [bold cyan]/next-lesson[/] in Claude Code to generate\n"
+            f"a personalised curriculum for [bold]{repo}[/].",
+            style="blue",
+            box_style=box.ROUNDED,
+            padding=(1, 3),
+        )
+    )
+    console.print()
+    console.print(Align.center(f"[dim]Saved → {_background_file(repo)}[/]"))
+
+
+# ── Main ───────────────────────────────────────────────────────────────────────
+
+
+def main():
+    # ── Parse args: [repo_name] [lesson_number] (order flexible) ──
+    repo_arg: Optional[str] = None
+    lesson_arg: Optional[int] = None
+
+    for arg in sys.argv[1:]:
+        try:
+            lesson_arg = int(arg)
+        except ValueError:
+            repo_arg = arg
+
+    # ── Resolve repo ──
+    if repo_arg is not None:
+        # Validate the txt file exists
+        input_file = _input_dir() / f"{repo_arg}.txt"
+        if not input_file.exists():
+            _cp(
+                _panel(
+                    f"[red]Repository '{repo_arg}' not found.[/]\n\n"
+                    f"Expected: [bold]input/{repo_arg}.txt[/]\n\n"
+                    "Available repos:\n"
+                    + "\n".join(f"  • {r}" for r in find_repos())
+                    or "  (none)",
+                    box_style=box.ROUNDED,
+                ),
+                top=2,
+            )
+            sys.exit(1)
+        repo = repo_arg
+    else:
+        repo = select_repo_menu()
+        if repo is None:
+            sys.exit(1)
+
+    lesson_n = lesson_arg
+
+    # ── Lesson 0: background assessment ──
+    if lesson_n == 0:
+        try:
+            run_background_assessment(repo)
+        except KeyboardInterrupt:
+            console.print()
+            console.print(Align.center("[yellow]Assessment interrupted. Nothing was saved.[/]"))
+        return
+
+    # ── Auto-trigger lesson 0 when no background profile exists ──
+    if lesson_n is None and not _background_file(repo).exists():
+        clear()
+        _cp(
+            _panel(
+                "[bold]GitHub Training Assistant[/]\n\n"
+                f"  No background profile found for [bold cyan]{repo}[/].\n"
+                "  Let's take 2 minutes to calibrate your curriculum.",
+                style="bold blue",
+                box_style=box.DOUBLE_EDGE,
+                padding=(1, 4),
+            ),
+            top=1,
+        )
+        wait_for_enter("Press [bold cyan]ENTER[/] to start the background assessment...")
+        try:
+            run_background_assessment(repo)
+        except KeyboardInterrupt:
+            console.print()
+            console.print(Align.center("[yellow]Assessment interrupted. Nothing was saved.[/]"))
+        return
+
+    if lesson_n is None:
+        lesson_n = find_latest_lesson(repo)
+        if lesson_n is None:
+            _cp(
+                _panel(
+                    f"[yellow]No lessons found for [bold]{repo}[/].[/]\n\n"
+                    "Run [bold cyan]/next-lesson[/] in Claude Code to generate your first lesson.",
+                    box_style=box.ROUNDED,
+                ),
+                top=2,
+            )
+            sys.exit(1)
+
+    ld = _lesson_dir(repo, lesson_n)
+    if not ld.exists():
+        _cp(_panel(f"[red]Lesson {lesson_n} not found at {ld}[/]", box_style=box.ROUNDED), top=2)
+        sys.exit(1)
+
+    started_at = datetime.now(timezone.utc).isoformat()
+
+    try:
+        clear()
+        _cp(
+            _panel(
+                "[bold]GitHub Training Assistant[/]\n\n"
+                f"  [bold dim]{repo}[/]  ·  [bold cyan]Lesson {lesson_n}[/]",
+                style="bold blue",
+                box_style=box.DOUBLE_EDGE,
+                padding=(1, 4),
+            ),
+            top=1,
+        )
+        wait_for_enter(f"Press [bold cyan]ENTER[/] to begin Lesson {lesson_n}...")
+
+        pages = load_pages(repo, lesson_n)
+        show_lesson_pages(repo, pages, lesson_n)
+
+        examples_data = load_examples(repo, lesson_n)
+        ex_results = run_all_examples(repo, examples_data, lesson_n)
+        examples_feedback = collect_feedback("coding exercises")
+
+        mcq_data = load_mcq(repo, lesson_n)
+        mcq_results = run_all_mcq(repo, mcq_data, lesson_n)
+        mcq_feedback = collect_feedback("quiz questions")
+
+        show_summary(repo, lesson_n, ex_results, mcq_results)
+        save_results(
+            repo, lesson_n, started_at, ex_results, mcq_results, examples_feedback, mcq_feedback
+        )
+
+    except KeyboardInterrupt:
+        console.print()
+        console.print()
+        _cp(
+            _panel(
+                "[yellow]Session interrupted.[/]  Progress has [bold]not[/] been saved.",
+                style="yellow",
+                box_style=box.ROUNDED,
+            )
+        )
+        console.print()
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

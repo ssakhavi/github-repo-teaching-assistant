@@ -1,0 +1,24 @@
+[project]
+name = "github-training-assistant"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "readchar>=4.2.1",
+    "rich>=14.3.3",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.8",
+    "ty>=0.0.26",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
