@@ -355,7 +355,7 @@ def run_example(ex: dict, ex_num: int, total_ex: int) -> dict:
     ex_type = ex["type"].replace("_", " ")
     title = ex["title"]
     description = ex["description"]
-    template = ex["template"]
+    template = ex.get("template") or ex.get("code", "")
     solution = ex["solution"]
     tests = ex["tests"]
 
@@ -442,7 +442,8 @@ def run_example(ex: dict, ex_num: int, total_ex: int) -> dict:
             console.print()
             _cp(
                 _panel(
-                    f"[bold green]All {len(tests)} test(s) passed![/]  Attempt {attempts}.  Nice work.",
+                    f"[bold green]All {len(tests)} test(s) passed![/]  "
+                    f"Attempt {attempts}.  Nice work.",
                     style="green",
                     box_style=box.ROUNDED,
                 )
@@ -454,7 +455,8 @@ def run_example(ex: dict, ex_num: int, total_ex: int) -> dict:
             console.print()
             _cp(
                 _panel(
-                    f"[bold red]{failed} test(s) failed.[/]  Review the errors above and try again.",
+                    f"[bold red]{failed} test(s) failed.[/]  "
+                    "Review the errors above and try again.",
                     style="red",
                     box_style=box.MINIMAL,
                 )

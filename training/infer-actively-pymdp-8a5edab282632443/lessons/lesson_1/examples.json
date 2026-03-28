@@ -1,0 +1,96 @@
+{
+  "lesson": 1,
+  "title": "What is pymdp and Active Inference?",
+  "examples": [
+    {
+      "id": 1,
+      "type": "fill_in_blank",
+      "title": "POMDP Component Lookup",
+      "description": "Tests whether the learner knows the four POMDP components (A, B, C, D) and what each one represents. Reinforces the core vocabulary introduced in the lesson.",
+      "template": "def get_pomdp_components():\n    \"\"\"Return a dict mapping each POMDP component letter to a one-line description.\"\"\"\n    components = {\n        \"A\": # ___BLANK___  (one-line string: what does the A matrix represent?)\n        \"B\": # ___BLANK___  (one-line string: what does the B matrix represent?)\n        \"C\": # ___BLANK___  (one-line string: what does the C vector represent?)\n        \"D\": # ___BLANK___  (one-line string: what does the D vector represent?)\n    }\n    return components",
+      "solution": "def get_pomdp_components():\n    \"\"\"Return a dict mapping each POMDP component letter to a one-line description.\"\"\"\n    components = {\n        \"A\": \"observation model — maps hidden states to observations\",\n        \"B\": \"transition model — describes how hidden states change over time\",\n        \"C\": \"preferences — the agent's preferred observations or outcomes\",\n        \"D\": \"initial state prior — the agent's belief about where it starts\"\n    }\n    return components",
+      "tests": [
+        {
+          "code": "result = get_pomdp_components()\nassert isinstance(result, dict), f'Expected a dict, got {type(result)}'",
+          "description": "Function returns a dictionary"
+        },
+        {
+          "code": "result = get_pomdp_components()\nassert set(result.keys()) == {'A', 'B', 'C', 'D'}, f'Expected keys A, B, C, D — got {set(result.keys())}'",
+          "description": "Dictionary has exactly the four POMDP component keys"
+        },
+        {
+          "code": "result = get_pomdp_components()\nfor key in ['A', 'B', 'C', 'D']:\n    assert isinstance(result[key], str) and len(result[key]) > 0, f'Value for \"{key}\" must be a non-empty string'",
+          "description": "Each component value is a non-empty string"
+        },
+        {
+          "code": "result = get_pomdp_components()\nassert 'observation' in result['A'].lower(), f'A should describe the observation model, got: {result[\"A\"]}'",
+          "description": "A component description mentions observations"
+        },
+        {
+          "code": "result = get_pomdp_components()\nassert 'transition' in result['B'].lower() or 'state' in result['B'].lower(), f'B should describe state transitions, got: {result[\"B\"]}'",
+          "description": "B component description relates to state transitions"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "fill_in_blank",
+      "title": "Active Inference Domain Classifier",
+      "description": "Tests whether the learner understands which real-world problem domains active inference has been applied to. Based on the paper's Statement of Need, which lists cognitive neuroscience, control theory, robotics, reinforcement learning, psychopathology, and social cognition.",
+      "template": "def is_active_inference_domain(domain):\n    \"\"\"Return True if the domain is one where active inference has been applied,\n    False otherwise.\n\n    Known active inference domains (from the pymdp paper):\n      cognitive neuroscience, robotics, reinforcement learning,\n      control theory, psychopathology, social cognition\n\n    Clearly out-of-scope domains:\n      image compression, sorting algorithms, web development,\n      video streaming\n    \"\"\"\n    known_domains = # ___BLANK___  (a list of lowercase domain strings that active inference covers)\n\n    return # ___BLANK___  (True if domain.lower() is in the list, False otherwise)",
+      "solution": "def is_active_inference_domain(domain):\n    \"\"\"Return True if the domain is one where active inference has been applied,\n    False otherwise.\n\n    Known active inference domains (from the pymdp paper):\n      cognitive neuroscience, robotics, reinforcement learning,\n      control theory, psychopathology, social cognition\n\n    Clearly out-of-scope domains:\n      image compression, sorting algorithms, web development,\n      video streaming\n    \"\"\"\n    known_domains = [\n        \"cognitive neuroscience\",\n        \"robotics\",\n        \"reinforcement learning\",\n        \"control theory\",\n        \"psychopathology\",\n        \"social cognition\"\n    ]\n\n    return domain.lower() in known_domains",
+      "tests": [
+        {
+          "code": "assert is_active_inference_domain('cognitive neuroscience') == True, 'Cognitive neuroscience is a known domain'",
+          "description": "Cognitive neuroscience returns True"
+        },
+        {
+          "code": "assert is_active_inference_domain('robotics') == True, 'Robotics is a known domain'",
+          "description": "Robotics returns True"
+        },
+        {
+          "code": "assert is_active_inference_domain('reinforcement learning') == True, 'Reinforcement learning is a known domain'",
+          "description": "Reinforcement learning returns True"
+        },
+        {
+          "code": "assert is_active_inference_domain('image compression') == False, 'Image compression is not a known domain'",
+          "description": "Image compression returns False"
+        },
+        {
+          "code": "assert is_active_inference_domain('sorting algorithms') == False, 'Sorting algorithms is not a known domain'",
+          "description": "Sorting algorithms returns False"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "write_whole",
+      "title": "Describe the Perception-Action Loop",
+      "description": "Tests whether the learner can reconstruct the correct order of the four-step perception-action loop that every pymdp agent follows. Reinforces the sequence: observe → infer hidden state → infer action → act.",
+      "template": "def get_loop_step(step_number):\n    \"\"\"Return the name of the given step in the pymdp perception-action loop.\n\n    The loop has four steps, numbered 1 to 4:\n      Step 1 — the agent receives a new observation from the environment\n      Step 2 — the agent updates its belief about the current hidden state\n      Step 3 — the agent selects which action to take\n      Step 4 — the agent acts and the environment changes\n\n    Args:\n        step_number (int): A number from 1 to 4.\n\n    Returns:\n        str: The name of that step, one of:\n             'observe', 'infer hidden state', 'select action', 'act'\n             Return 'unknown' for any other number.\n    \"\"\"\n    pass",
+      "solution": "def get_loop_step(step_number):\n    \"\"\"Return the name of the given step in the pymdp perception-action loop.\n\n    The loop has four steps, numbered 1 to 4:\n      Step 1 — the agent receives a new observation from the environment\n      Step 2 — the agent updates its belief about the current hidden state\n      Step 3 — the agent selects which action to take\n      Step 4 — the agent acts and the environment changes\n\n    Args:\n        step_number (int): A number from 1 to 4.\n\n    Returns:\n        str: The name of that step, one of:\n             'observe', 'infer hidden state', 'select action', 'act'\n             Return 'unknown' for any other number.\n    \"\"\"\n    steps = {\n        1: 'observe',\n        2: 'infer hidden state',\n        3: 'select action',\n        4: 'act'\n    }\n    return steps.get(step_number, 'unknown')",
+      "tests": [
+        {
+          "code": "assert get_loop_step(1) == 'observe', f'Step 1 should be observe, got: {get_loop_step(1)}'",
+          "description": "Step 1 is 'observe'"
+        },
+        {
+          "code": "assert get_loop_step(2) == 'infer hidden state', f'Step 2 should be infer hidden state, got: {get_loop_step(2)}'",
+          "description": "Step 2 is 'infer hidden state'"
+        },
+        {
+          "code": "assert get_loop_step(3) == 'select action', f'Step 3 should be select action, got: {get_loop_step(3)}'",
+          "description": "Step 3 is 'select action'"
+        },
+        {
+          "code": "assert get_loop_step(4) == 'act', f'Step 4 should be act, got: {get_loop_step(4)}'",
+          "description": "Step 4 is 'act'"
+        },
+        {
+          "code": "assert get_loop_step(99) == 'unknown', f'Unknown step numbers should return unknown, got: {get_loop_step(99)}'",
+          "description": "Out-of-range step number returns 'unknown'"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "repo": "infer-actively-pymdp-8a5edab282632443",
+  "lesson": 1,
+  "started_at": "2026-03-28T12:03:17.428824+00:00",
+  "completed_at": "2026-03-28T12:45:57.299489+00:00",
+  "examples": [
+    {
+      "id": 1,
+      "passed": false,
+      "attempts": 1,
+      "time_seconds": 180
+    },
+    {
+      "id": 2,
+      "passed": false,
+      "attempts": 0,
+      "time_seconds": 19
+    },
+    {
+      "id": 3,
+      "passed": false,
+      "attempts": 0,
+      "time_seconds": 11
+    }
+  ],
+  "mcq": [
+    {
+      "id": 1,
+      "answer": "B",
+      "correct": true,
+      "i_dont_know": false,
+      "time_seconds": 7
+    },
+    {
+      "id": 2,
+      "answer": "B",
+      "correct": true,
+      "i_dont_know": false,
+      "time_seconds": 5
+    },
+    {
+      "id": 3,
+      "answer": "C",
+      "correct": true,
+      "i_dont_know": false,
+      "time_seconds": 7
+    },
+    {
+      "id": 4,
+      "answer": "C",
+      "correct": true,
+      "i_dont_know": false,
+      "time_seconds": 7
+    },
+    {
+      "id": 5,
+      "answer": "B",
+      "correct": true,
+      "i_dont_know": false,
+      "time_seconds": 23
+    },
+    {
+      "id": 6,
+      "answer": "E",
+      "correct": false,
+      "i_dont_know": true,
+      "time_seconds": 10
+    },
+    {
+      "id": 7,
+      "answer": "B",
+      "correct": true,
+      "i_dont_know": false,
+      "time_seconds": 14
+    },
+    {
+      "id": 8,
+      "answer": "C",
+      "correct": true,
+      "i_dont_know": false,
+      "time_seconds": 9
+    },
+    {
+      "id": 9,
+      "answer": "B",
+      "correct": true,
+      "i_dont_know": false,
+      "time_seconds": 7
+    },
+    {
+      "id": 10,
+      "answer": "C",
+      "correct": true,
+      "i_dont_know": false,
+      "time_seconds": 5
+    }
+  ],
+  "score": {
+    "examples_passed": 0,
+    "examples_skipped": 2,
+    "examples_total": 3,
+    "mcq_correct": 9,
+    "mcq_dont_know": 1,
+    "mcq_total": 10
+  },
+  "feedback": {
+    "examples": "I need more time to grasp the contents. One by one.",
+    "mcq": null
+  }
+}

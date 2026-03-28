@@ -1,0 +1,54 @@
+{
+  "lesson": 2,
+  "title": "Python Arrays and JAX Basics",
+  "examples": [
+    {
+      "id": 1,
+      "type": "fill_in_blank",
+      "title": "Normalise a distribution",
+      "description": "Tests whether the learner can divide each element of a list by the total sum to produce a valid probability distribution. This mirrors what pymdp's norm_dist does under the hood.",
+      "template": "def normalise(values):\n    total = sum(values)\n    # ___BLANK___  (return a new list where each element v is divided by total)\n    pass",
+      "solution": "def normalise(values):\n    total = sum(values)\n    return [v / total for v in values]",
+      "tests": [
+        {
+          "code": "result = normalise([3, 1])\nassert abs(sum(result) - 1.0) < 0.001, f'Expected sum 1.0, got {sum(result)}'",
+          "description": "Result sums to approximately 1.0"
+        },
+        {
+          "code": "result = normalise([3, 1])\nassert abs(result[0] - 0.75) < 0.001, f'Expected result[0] to be 0.75, got {result[0]}'",
+          "description": "First element is correct for input [3, 1]"
+        },
+        {
+          "code": "result = normalise([3, 1])\nassert len(result) == 2, f'Expected length 2, got {len(result)}'",
+          "description": "Result has the same length as the input"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "fill_in_blank",
+      "title": "Check if a distribution is valid",
+      "description": "Tests whether the learner understands the two rules that make a list of numbers a valid probability distribution: all values must be non-negative and they must sum to 1.0.",
+      "template": "def is_valid_distribution(values):\n    all_non_negative = all(v >= 0 for v in values)\n    total = sum(values)\n    # ___BLANK___  (return True if all_non_negative is True AND total is within 0.001 of 1.0)\n    pass",
+      "solution": "def is_valid_distribution(values):\n    all_non_negative = all(v >= 0 for v in values)\n    total = sum(values)\n    return all_non_negative and abs(total - 1.0) < 0.001",
+      "tests": [
+        {
+          "code": "assert is_valid_distribution([0.3, 0.5, 0.2]) == True, 'Expected True for [0.3, 0.5, 0.2]'",
+          "description": "Returns True for a valid distribution [0.3, 0.5, 0.2]"
+        },
+        {
+          "code": "assert is_valid_distribution([1, 2, 3]) == False, 'Expected False for [1, 2, 3] (sums to 6, not 1)'",
+          "description": "Returns False when values do not sum to 1"
+        },
+        {
+          "code": "assert is_valid_distribution([-0.1, 0.6, 0.5]) == False, 'Expected False for [-0.1, 0.6, 0.5] (negative value)'",
+          "description": "Returns False when a value is negative"
+        },
+        {
+          "code": "assert is_valid_distribution([0.5, 0.5]) == True, 'Expected True for [0.5, 0.5]'",
+          "description": "Returns True for [0.5, 0.5]"
+        }
+      ]
+    }
+  ]
+}

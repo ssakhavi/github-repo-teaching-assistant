@@ -1,0 +1,110 @@
+{
+  "lesson": 2,
+  "title": "Python Arrays and JAX Basics",
+  "questions": [
+    {
+      "id": 1,
+      "question": "Which two properties must hold for an array to be a valid probability distribution?",
+      "options": {
+        "A": "All values must be positive (> 0) and the maximum value must equal 1.",
+        "B": "All values must be non-negative (>= 0) and the values must sum to exactly 1.",
+        "C": "All values must be between 0 and 1, and the product of the values must equal 1.",
+        "D": "All values must be integers and they must sum to 100.",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because a probability distribution requires every value to be non-negative (you cannot have a negative probability) and the total must sum to 1 (the event space is exhaustive). A is wrong because zero is a valid probability — an impossible outcome has probability 0, not > 0. C is wrong because individual values being between 0 and 1 is a consequence of the two real rules, not the rules themselves, and the product constraint makes no sense for probabilities. D is wrong because probabilities are real numbers, not integers, and summing to 100 is a percentage convention, not the mathematical definition."
+    },
+    {
+      "id": 2,
+      "question": "Looking at the actual source code: `norm_dist` in `pymdp/utils.py` is defined as `return dist / dist.sum(0)`. If you call `norm_dist` on the array `[3, 1]`, what does it return?",
+      "options": {
+        "A": "[1.5, 0.5]",
+        "B": "[3.0, 1.0]",
+        "C": "[0.75, 0.25]",
+        "D": "[0.5, 0.5]",
+        "E": "I don't know"
+      },
+      "correct_answer": "C",
+      "explanation": "C is correct because the sum of [3, 1] is 4, and dividing each element by 4 gives [3/4, 1/4] = [0.75, 0.25]. A is wrong because dividing by 2 (the length) rather than 4 (the sum) would give [1.5, 0.5] — that is a mean operation, not normalisation. B is wrong because [3.0, 1.0] is just the original array cast to float, unchanged. D is wrong because [0.5, 0.5] would only result if both values were equal; it ignores the actual ratio."
+    },
+    {
+      "id": 3,
+      "question": "What is `jax.numpy` (imported as `jnp` in pymdp) in relation to NumPy?",
+      "options": {
+        "A": "A completely different library with an incompatible API that replaces NumPy entirely.",
+        "B": "A thin wrapper around NumPy that only adds GPU support but changes the function names.",
+        "C": "A NumPy-compatible API that can run on GPUs and TPUs and supports automatic differentiation, so `jnp.array([1, 2, 3])` works almost identically to `np.array([1, 2, 3])`.",
+        "D": "An older version of NumPy that pymdp uses for backwards compatibility.",
+        "E": "I don't know"
+      },
+      "correct_answer": "C",
+      "explanation": "C is correct because JAX's numpy module was designed to be a near drop-in replacement for NumPy while adding GPU/TPU execution and automatic differentiation capabilities — the same function names and semantics apply in almost all cases. A is wrong because JAX numpy is intentionally API-compatible, not incompatible. B is wrong because JAX numpy does not just add GPU support; automatic differentiation is a core feature, and the function names are not changed. D is wrong because JAX is a modern library (not older), actively developed and not related to legacy compatibility."
+    },
+    {
+      "id": 4,
+      "question": "Why does pymdp store multiple hidden-state factor distributions as a Python list (e.g., `[D_factor_1, D_factor_2]`) instead of a single 2D array?",
+      "options": {
+        "A": "Because Python lists are faster than NumPy arrays for matrix operations.",
+        "B": "Because each factor can have a different number of states, and combining them into one matrix would cause a combinatorial explosion in size.",
+        "C": "Because 2D arrays cannot store probability distributions.",
+        "D": "Because the pymdp authors wanted to follow an older convention from the original MATLAB code.",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because using a factorised representation keeps each factor independent and avoids the combinatorial explosion that would occur if all factors were combined — for example, two factors with 10 states each would require a 100-element joint array instead of two 10-element arrays, and this grows exponentially with the number of factors. A is wrong because Python lists are generally slower than NumPy arrays for numerical operations, not faster. C is wrong because 2D arrays can absolutely store distributions (along their columns or rows); the issue is scale and independence. D is wrong because the factorised list design is a deliberate mathematical choice tied to the Active Inference generative model, not a legacy artefact."
+    },
+    {
+      "id": 5,
+      "question": "In `pymdp/utils.py`, `list_array_norm_dist` is implemented as `jtu.tree_map(lambda dist: norm_dist(dist), dist_list)`. What does this function do compared to calling `norm_dist` directly?",
+      "options": {
+        "A": "It normalises only the first array in the list, leaving the others unchanged.",
+        "B": "It merges all arrays in the list into a single array and then normalises the combined result.",
+        "C": "It applies `norm_dist` to every array in the list, returning a list of individually normalised distributions.",
+        "D": "It checks whether each array is already normalised, and only normalises the ones that are not.",
+        "E": "I don't know"
+      },
+      "correct_answer": "C",
+      "explanation": "C is correct because `jtu.tree_map` applies the given function — here `norm_dist` — to every leaf of the JAX pytree, which for a plain Python list of arrays means applying it independently to each array and returning a list of results. A is wrong because `tree_map` iterates over all elements, not just the first. B is wrong because each array is normalised independently; they are never merged into a single combined array. D is wrong because the function unconditionally normalises every element; there is no pre-check in the source code."
+    },
+    {
+      "id": 6,
+      "question": "At a conceptual level, what does 'epistemic value' mean in Active Inference?",
+      "options": {
+        "A": "The total reward an agent accumulates over its lifetime.",
+        "B": "The value an agent places on taking the safest possible action to avoid danger.",
+        "C": "The drive to take actions that reduce uncertainty about hidden states — choosing actions that make the agent's belief distribution more peaked and informative.",
+        "D": "The accuracy of an agent's sensory observations compared to the true state of the world.",
+        "E": "I don't know"
+      },
+      "correct_answer": "C",
+      "explanation": "C is correct because epistemic value captures the intrinsic motivation for information-gathering: an agent prefers actions that collapse a broad, uncertain distribution over hidden states into a narrow, confident one — this is what makes Active Inference agents naturally curious. A is wrong because cumulative reward describes an extrinsic, goal-directed motivation, not the information-seeking drive. B is wrong because safety/risk aversion is a separate consideration and is not what 'epistemic' refers to; the word comes from epistemology, the study of knowledge. D is wrong because that describes observation accuracy or likelihood, not the value of choosing actions to learn more."
+    },
+    {
+      "id": 7,
+      "question": "Which of the following arrays is a valid probability distribution?",
+      "options": {
+        "A": "[0.4, 0.4, 0.4]",
+        "B": "[1.0, 0.5, -0.5]",
+        "C": "[0.0, 1.0, 0.0]",
+        "D": "[2, 3, 5]",
+        "E": "I don't know"
+      },
+      "correct_answer": "C",
+      "explanation": "C is correct because [0.0, 1.0, 0.0] has all non-negative values and sums to exactly 1.0 — it is a perfectly valid (degenerate) distribution that places all probability mass on the second outcome. A is wrong because [0.4, 0.4, 0.4] sums to 1.2, not 1.0. B is wrong because it contains -0.5, which is negative — probabilities cannot be negative. D is wrong because [2, 3, 5] sums to 10, not 1; it is an unnormalised count vector that would need to be passed through `norm_dist` first."
+    },
+    {
+      "id": 8,
+      "question": "The `norm_dist` function divides every element of the array by `dist.sum(0)`. Why does it use `.sum(0)` with the argument `0` rather than just `.sum()`?",
+      "options": {
+        "A": "Passing `0` makes the function sum only the first element of the array.",
+        "B": "For a 1D array the result is the same, but for a 2D array `.sum(0)` sums along axis 0 (columns), enabling column-wise normalisation of a matrix where each column is a distribution.",
+        "C": "`.sum(0)` returns an integer while `.sum()` returns a float, and integer division is needed for correctness.",
+        "D": "The `0` is an index that selects the largest element to use as the denominator.",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because `.sum(0)` means 'sum along axis 0', which for a 1D array is identical to `.sum()` (the total), but for a 2D array it produces a 1D vector of column sums — allowing `dist / dist.sum(0)` to normalise each column independently in one vectorised operation. A is wrong because `0` is an axis argument, not an element index; it does not restrict summation to a single element. C is wrong because both `.sum()` and `.sum(0)` return the same numeric type for a given array; the argument does not affect the dtype. D is wrong because the argument to `.sum()` is always an axis specifier, not an element index."
+    }
+  ]
+}

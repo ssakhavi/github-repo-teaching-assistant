@@ -1,0 +1,54 @@
+{
+  "lesson": 3,
+  "title": "Building an Observation Model (The A Matrix)",
+  "examples": [
+    {
+      "id": 1,
+      "type": "fill_in_blank",
+      "title": "Read a column from an A matrix",
+      "description": "An A matrix is stored as a list-of-lists where `A_matrix[obs][state]` gives the probability of observation `obs` when the hidden state is `state`. Each column (all rows at a fixed state index) is a probability distribution over observations.\n\nComplete the function so it returns the column at `state_index` as a list — one probability per observation.",
+      "template": "def read_A_column(A_matrix, state_index):\n    n_obs = len(A_matrix)\n    return ___BLANK___",
+      "solution": "def read_A_column(A_matrix, state_index):\n    n_obs = len(A_matrix)\n    return [A_matrix[obs][state_index] for obs in range(n_obs)]",
+      "tests": [
+        {
+          "description": "Returns the correct column for state index 0",
+          "code": "A = [[0.9, 0.1], [0.1, 0.9]]\nresult = read_A_column(A, 0)\nassert result == [0.9, 0.1], f'Expected [0.9, 0.1] but got {result}'"
+        },
+        {
+          "description": "Returns the correct column for state index 1",
+          "code": "A = [[0.9, 0.1], [0.1, 0.9]]\nresult = read_A_column(A, 1)\nassert result == [0.1, 0.9], f'Expected [0.1, 0.9] but got {result}'"
+        },
+        {
+          "description": "Returns a list with the correct number of observations",
+          "code": "A = [[0.5, 0.5], [0.5, 0.5]]\nresult = read_A_column(A, 0)\nassert len(result) == 2, f'Expected length 2 but got {len(result)}'"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "fill_in_blank",
+      "title": "Check if all A matrix columns sum to 1",
+      "description": "Every column of a valid A matrix must be a probability distribution — meaning it must sum to 1. This is the same rule from Lesson 2 applied to each column of A.\n\nComplete the one blank inside the loop so that `col_sum` holds the sum of all values in column `s`.",
+      "template": "def all_columns_valid(A_matrix):\n    n_states = len(A_matrix[0])\n    n_obs = len(A_matrix)\n    for s in range(n_states):\n        col_sum = ___BLANK___\n        if abs(col_sum - 1.0) > 0.001:\n            return False\n    return True",
+      "solution": "def all_columns_valid(A_matrix):\n    n_states = len(A_matrix[0])\n    n_obs = len(A_matrix)\n    for s in range(n_states):\n        col_sum = sum(A_matrix[obs][s] for obs in range(n_obs))\n        if abs(col_sum - 1.0) > 0.001:\n            return False\n    return True",
+      "tests": [
+        {
+          "description": "Returns True when all columns sum to 1",
+          "code": "A = [[0.9, 0.1], [0.1, 0.9]]\nresult = all_columns_valid(A)\nassert result == True, f'Expected True but got {result}'"
+        },
+        {
+          "description": "Returns True for a mixed valid A matrix",
+          "code": "A = [[1.0, 0.5], [0.0, 0.5]]\nresult = all_columns_valid(A)\nassert result == True, f'Expected True but got {result}'"
+        },
+        {
+          "description": "Returns False when a column does not sum to 1",
+          "code": "A = [[0.9, 0.2], [0.1, 0.9]]\nresult = all_columns_valid(A)\nassert result == False, f'Expected False but got {result}'"
+        },
+        {
+          "description": "Returns True for a uniform A matrix",
+          "code": "A = [[0.5, 0.5], [0.5, 0.5]]\nresult = all_columns_valid(A)\nassert result == True, f'Expected True but got {result}'"
+        }
+      ]
+    }
+  ]
+}

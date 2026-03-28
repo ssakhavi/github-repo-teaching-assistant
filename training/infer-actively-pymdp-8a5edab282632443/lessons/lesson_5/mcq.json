@@ -1,0 +1,136 @@
+{
+  "lesson": 5,
+  "title": "Preferences and Priors (The C and D Vectors)",
+  "questions": [
+    {
+      "id": 1,
+      "question": "An agent has `num_controls = [3, 1]`. Which of the following statements correctly describes the two hidden state factors?",
+      "options": {
+        "A": "Factor 0 has 3 hidden states and factor 1 has 1 hidden state",
+        "B": "Factor 0 is controllable with 3 possible actions; factor 1 has only 1 action and is not meaningfully controllable",
+        "C": "Both factors share a combined pool of 4 actions the agent selects from each timestep",
+        "D": "Factor 1 cannot transition between states at all because num_controls is 1",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because `num_controls[f]` specifies how many distinct actions are available for factor f — factor 0 with 3 entries gives the agent real control over that factor's transitions, while factor 1 with only 1 entry means there is no meaningful choice and the factor evolves autonomously. A is wrong because `num_controls` counts actions, not hidden states (that would be `num_states`). C is wrong because each factor's action count is independent, not pooled into a shared budget. D is wrong because the factor can still transition probabilistically according to its B slice — it just does so without agent influence."
+    },
+    {
+      "id": 2,
+      "question": "In a B action-slice of shape `(num_next_states, num_current_states)`, which dimension must contain valid probability distributions summing to 1?",
+      "options": {
+        "A": "Each row must sum to 1, because a row lists all possible next states for a given current state",
+        "B": "Each column must sum to 1, because a column is the distribution over next states given a fixed current state",
+        "C": "The entire matrix must sum to 1, because it represents one joint distribution",
+        "D": "No normalization constraint applies — B stores unnormalized counts",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because the axis order in pymdp is `(next_state, current_state, action)`, so column index `s` holds the probability distribution P(s' | s, a) over all next states s' — that column must sum to 1. A is wrong because rows span different current states for a fixed next state, which is not a meaningful standalone distribution. C is wrong because requiring the whole matrix to sum to 1 is a different and incorrect constraint. D is wrong because the normalization is fundamental to B being a valid conditional probability table."
+    },
+    {
+      "id": 3,
+      "question": "What does the C vector represent in a pymdp POMDP agent?",
+      "options": {
+        "A": "The agent's prior beliefs about its initial hidden state before any observation",
+        "B": "The agent's preferred (or desired) observations, expressed on a log-probability scale",
+        "C": "The conditional probability of observations given hidden states",
+        "D": "A list of action costs used to penalise expensive control sequences",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because C encodes the agent's preferences over observations — each entry represents how strongly the agent 'wants' that observation outcome, with higher values indicating stronger preference on a log-probability scale. A is wrong because prior beliefs about the initial hidden state are encoded in the D vector. C is wrong because that describes the A matrix (the observation likelihood). D is wrong because pymdp does not use C for action costs; it is purely about desired observations."
+    },
+    {
+      "id": 4,
+      "question": "Consider `C[0] = [0.0, 0.0, 2.0]` for a modality with 3 possible observations. What can you conclude?",
+      "options": {
+        "A": "The agent assigns 2% probability to outcome 2 and equal probability to outcomes 0 and 1",
+        "B": "The agent is indifferent between all three outcomes because no negative values appear",
+        "C": "The agent strongly prefers outcome 2 (index 2); outcomes 0 and 1 are neutral (value 0 = neither desired nor aversive)",
+        "D": "The total of all C values must equal 1.0, so this array is invalid and will cause an error",
+        "E": "I don't know"
+      },
+      "correct_answer": "C",
+      "explanation": "C is correct because C values sit on a log-probability scale where 0 means neutral, positive values signal desire, and negative values signal aversion — so `2.0` at index 2 means the agent actively seeks outcome 2, while `0.0` at indices 0 and 1 means those outcomes are neither wanted nor avoided. A is wrong because C is not raw probability; it does not need to sum to 1 and `2.0` is not a percentage. B is wrong because equal neutrality would require all zeros, but the `2.0` entry makes outcome 2 actively preferred. D is wrong because C values do not need to sum to 1 — they are log-scale preferences, not a probability distribution."
+    },
+    {
+      "id": 5,
+      "question": "What does calling `utils.obj_array_uniform(num_obs)` produce when used to initialise C?",
+      "options": {
+        "A": "An object array where each sub-array is all zeros, representing no preference for any outcome",
+        "B": "An object array where each sub-array is a uniform probability distribution (all entries equal to 1/N), representing equal preference for all outcomes",
+        "C": "An object array where each sub-array is randomly initialised, representing random initial preferences",
+        "D": "An object array containing a single float 1.0, representing a uniform prior",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because `obj_array_uniform` calls `norm_dist(np.ones(shape))` for each element, which normalises a vector of ones to produce `1/N` for every outcome — a uniform categorical distribution. A is wrong because all-zeros is what `obj_array_zeros` produces, not `obj_array_uniform`. C is wrong because the result is deterministic and uniform, not random. D is wrong because the function returns a full object array with one sub-array per modality, not a single scalar."
+    },
+    {
+      "id": 6,
+      "question": "Why are C preference values stored on a log-probability scale rather than as raw probabilities between 0 and 1?",
+      "options": {
+        "A": "Because NumPy cannot store values larger than 1.0 in object arrays",
+        "B": "Because using a log scale allows preferences to be any real number — positive for desired outcomes, negative for aversive ones, and 0 for neutral — without being confined to the [0, 1] range",
+        "C": "Because C must match the shape of the B matrix, which also uses log probabilities",
+        "D": "To ensure the sum of C values across a modality always equals 1.0",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because the log scale decouples preferences from the normalization constraint of a probability distribution: the agent can express strong desire (large positive number), strong aversion (large negative number), or neutrality (0) without the values summing to 1. A is wrong because NumPy can store any float value — there is no such restriction. C is wrong because the B matrix does not use log probabilities; its entries are standard conditional probabilities. D is wrong because C values do not need to sum to 1 — the whole point of using a log scale is to avoid that constraint."
+    },
+    {
+      "id": 7,
+      "question": "What does the D vector represent in a pymdp POMDP agent?",
+      "options": {
+        "A": "The agent's preferences over observations before it has acted",
+        "B": "The agent's prior probability distribution over hidden states at the first timestep, before any observation",
+        "C": "The deterministic initial state the agent occupies at time 0",
+        "D": "A normalisation constant used to keep the A matrix columns summing to 1",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because D encodes what the agent believes about where it starts in state space — it is a probability distribution (or set of distributions over multiple factors) representing prior beliefs before any evidence has been gathered. A is wrong because observation preferences are the role of C, not D. C is wrong because D is a probability distribution, not a hard assignment; the agent may be uncertain about its starting state. D is wrong because A matrix normalization is handled by `norm_dist` / `norm_dist_obj_arr`, not by D."
+    },
+    {
+      "id": 8,
+      "question": "Which constraint must every sub-array `D[f]` satisfy?",
+      "options": {
+        "A": "All entries must be 0 or 1 (a one-hot vector indicating the certain starting state)",
+        "B": "All entries must sum to 1 and be non-negative, because D[f] is a probability distribution over initial hidden states",
+        "C": "The entries must sum to the number of hidden states in factor f",
+        "D": "No constraint — D can store any real values because it is on a log scale like C",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because D[f] is a proper categorical probability distribution over the possible starting states for factor f — each entry must be non-negative and the entries must sum to 1, just like any column of the A matrix. A is wrong because D[f] can represent uncertainty across multiple states, not only certainty (a one-hot is a valid but special case). C is wrong because a probability distribution always sums to 1 regardless of how many states it spans. D is wrong because D is not on a log scale — unlike C, D stores genuine probabilities that must satisfy the normalisation constraint."
+    },
+    {
+      "id": 9,
+      "question": "What does `utils.random_single_categorical([3, 4])` return?",
+      "options": {
+        "A": "A single 1-D NumPy array of length 7 containing random values that sum to 1",
+        "B": "A 2-D NumPy array of shape (3, 4) where each row sums to 1",
+        "C": "A NumPy object array with two sub-arrays: one of length 3 and one of length 4, each a valid normalised categorical distribution",
+        "D": "A list of two Python lists: [3 random floats, 4 random floats], without normalisation",
+        "E": "I don't know"
+      },
+      "correct_answer": "C",
+      "explanation": "C is correct because `random_single_categorical(shape_list)` iterates over `shape_list`, calls `norm_dist(np.random.rand(shape_i))` for each entry, and stores the resulting normalised 1-D array in a NumPy object array — so the output is an object array with `len(shape_list)` sub-arrays, each a valid probability distribution of the given length. A is wrong because the function returns an object array of separate distributions, not a concatenated vector. B is wrong because the output is an object array, not a 2-D ndarray. D is wrong because `norm_dist` is applied to each random array, so the values are normalised."
+    },
+    {
+      "id": 10,
+      "question": "Which four components together fully define the POMDP generative model in pymdp?",
+      "options": {
+        "A": "A, B, C, and `qs` (the posterior over hidden states)",
+        "B": "A (observation model), B (transition model), C (preferences), and D (initial state prior)",
+        "C": "A, B, and C — D is optional and only needed for learning",
+        "D": "B, C, D, and `num_controls` — the A matrix is inferred automatically from observations",
+        "E": "I don't know"
+      },
+      "correct_answer": "B",
+      "explanation": "B is correct because A encodes how hidden states generate observations, B encodes how hidden states transition under actions, C encodes what observations the agent wants, and D encodes what the agent believes about its starting state — together these four components fully specify the agent's model of the world and its goals. A is wrong because `qs` is a posterior belief updated at runtime, not a fixed component of the generative model. C is wrong because D is a core component of the generative model (it is used at initialisation and during inference, not only during learning). D is wrong because the A matrix is a fundamental, explicitly specified part of the model and is never inferred automatically."
+    }
+  ]
+}
