@@ -1,7 +1,7 @@
 [project]
 name = "github-training-assistant"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered interactive lessons from any GitHub repository"
 requires-python = ">=3.13"
 dependencies = [
     "readchar>=4.2.1",

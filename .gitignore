@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Gitingest repo snapshots (can be very large)
+input/*.txt
+
+# Generated training content (user-specific)
+training/*/
