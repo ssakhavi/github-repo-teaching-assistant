@@ -983,6 +983,18 @@ def run_background_assessment(repo: str):
     )
     console.print()
     console.print(Align.center(f"[dim]Saved → {_background_file(repo)}[/]"))
+    console.print()
+    _cp(
+        _panel(
+            "[dim]Optional:[/] For lessons personalised to your professional background,\n"
+            "drop your CV, resume, or cover letter into [bold]input/[/] "
+            "([bold]cv.pdf[/], [bold]resume.txt[/], etc.) and run\n"
+            "[bold cyan]/generate-kyu[/] in Claude Code.",
+            style="dim blue",
+            box_style=box.ROUNDED,
+            padding=(1, 3),
+        )
+    )
 
 
 # ── Main ───────────────────────────────────────────────────────────────────────

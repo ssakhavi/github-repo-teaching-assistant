@@ -62,6 +62,14 @@ MCQ questions:
 
 Also read `training/<repo_name>/results/lesson_0_background.json` to remind yourself of the learner's experience level.
 
+## Step 5b: Read KYU Profile (if available)
+
+Check if `training/<repo_name>/results/kyu.md` exists. If it does, read it in full.
+
+When writing the blueprint in Step 6, embed a **Learner Background** section (see template below). This propagates personalisation to all downstream subagents that read the blueprint — lesson text, MCQ, and exercises — without each of them needing to re-read `kyu.md` directly.
+
+If `kyu.md` does not exist, omit the Learner Background section entirely.
+
 ## Step 6: Write the Blueprint
 
 Create `training/<repo_name>/lessons/lesson_N/` and write `blueprint.md`:
@@ -134,6 +142,16 @@ Do NOT reference these concepts anywhere in the lesson, exercises, or MCQ:
 - [Concept from lesson N-1]
 - [Concept from lesson N-2 if relevant]
 (or "None — first lesson")
+
+## Learner Background
+[Only present if kyu.md was read in Step 5b — omit this section entirely otherwise]
+
+**Professional context:** [one sentence: role + domain from KYU]
+**Primary languages & tools:** [comma-separated from KYU Technical Expertise — what they know fluently]
+**Analogy sources:** [verbatim from KYU "Use analogies from"]
+**Calibration directives:**
+- [Each bullet from KYU "Calibration notes", verbatim or lightly adapted for this lesson]
+**Avoid:** [verbatim from KYU "What to avoid"]
 
 ## Performance Notes
 [Only if previous results exist]

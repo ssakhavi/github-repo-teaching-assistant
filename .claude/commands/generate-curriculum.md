@@ -26,6 +26,19 @@ Read `training/<repo_name>/results/lesson_0_background.json`. Extract:
 - intermediate + comfort 3: medium lessons, balanced
 - experienced/senior + comfort 4–5: denser lessons, less hand-holding, more depth
 
+## Step 2b: Read KYU Profile (if available)
+
+Check if `training/<repo_name>/results/kyu.md` exists. If it does, read it in full.
+
+When designing the lesson sequence in Steps 4–5:
+- Use the **Personalisation Recommendations** section to inform pacing rationale in the Progression Rationale
+- Add `KYU profile: active (kyu.md)` to the Learner Profile section of the curriculum
+- Prefer analogy sources from KYU "Use analogies from" when describing what each lesson covers
+- Apply "What to avoid" to reduce scaffolding where the user already has strong expertise
+- If `specific_interests` from the background assessment aligns with domain knowledge in the KYU profile, weight those topics higher in lesson ordering
+
+If `kyu.md` does not exist, continue — the background profile alone is sufficient.
+
 ## Step 3: Analyse the Repository
 
 Read `input/<repo_name>.txt`. Start with the first 200 lines to see the file tree and understand the structure. Then read key files to understand:
@@ -73,6 +86,7 @@ Write `training/<repo_name>/curriculum.md`:
 - Codebase comfort: [N]/5
 - Learning goal: [from background]
 - Special interests: [from background, or "None specified"]
+- KYU profile: [active (kyu.md) | not provided]
 - Pacing: [how lessons are calibrated for this learner]
 
 ## Lesson Map

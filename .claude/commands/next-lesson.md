@@ -49,6 +49,22 @@ If it does **not** exist, stop and tell the user:
 
 ---
 
+## Step 2b: Check KYU Profile
+
+Check if `training/<repo_name>/results/kyu.md` exists.
+
+- If it **exists**: continue silently — personalisation will be active throughout generation.
+- If it does **not** exist: use the Glob tool to check for profile documents in `input/` matching: `cv.*`, `resume.*`, `cover_letter.*`, `covering_letter.*`, `linkedin.*` (extensions: `.txt`, `.md`, `.pdf`, `.docx`).
+  - If any profile files are found, display this tip before continuing:
+    > **Tip:** Profile documents were found in `input/` but no KYU profile has been generated yet.
+    > Run `/generate-kyu` for lessons tailored to your professional background.
+    > Continuing without KYU personalisation...
+  - If no profile files found: continue silently.
+
+KYU is always optional — generation proceeds either way.
+
+---
+
 ## Step 3: Assess Current State
 
 Use the Glob tool to check:
@@ -120,6 +136,12 @@ Lesson number: {N+1}
 
 Read `training/<repo>/lessons/lesson_{N+1}/blueprint.md` fully — focus on the Content Outline, Key Concepts, Code Focus, What NOT to Cover, and **User Feedback** sections. If User Feedback lists specific confusion points or topics the learner wants more of, ensure those are addressed in the lesson content where they fit within scope.
 
+If the blueprint contains a **Learner Background** section, apply it throughout the lesson:
+- Use the listed **Analogy sources** when explaining every concept — ground analogies in the user's domain, not generic examples
+- Follow all **Calibration directives** to adjust depth — skip scaffolding the user doesn't need, add depth where they have relevant expertise
+- Respect the **Avoid** list — do not use framing or analogies from unfamiliar domains
+- Write as if speaking to someone with that professional context, not as a generic tutorial
+
 Read `input/<repo>.txt` — specifically the files listed in the blueprint's "Code Focus" section. Be strategic; do not read the whole file.
 
 Write a paginated lesson to `training/<repo>/lessons/lesson_{N+1}/lesson.md`:
@@ -151,6 +173,11 @@ Repo: <repo>
 Lesson number: {N+1}
 
 Read `training/<repo>/lessons/lesson_{N+1}/blueprint.md` — focus on Learning Objectives, Key Concepts, MCQ Topic Areas, Prior Knowledge Available, What NOT to Cover, and **User Feedback**. If the User Feedback section flags specific concepts as confusing, make sure those concepts appear as questions (so the learner can retest their understanding) without being the only topic covered.
+
+If the blueprint contains a **Learner Background** section, apply it to question framing:
+- Use domain-appropriate scenario framing where possible (e.g. "In a production API context..." for a backend engineer; "In a data pipeline..." for an ML practitioner)
+- Use **Calibration directives** to set distractor difficulty — senior engineers get subtler wrong answers, beginners get clearer distinctions
+- Do not reveal any content from the Learner Background section in question text itself
 
 Read `input/<repo>.txt` — specifically the files in the Code Focus section. Every factual claim must be verifiable against the actual code.
 
@@ -209,6 +236,11 @@ Read `training/<repo>/lessons/lesson_{N+1}/blueprint.md` — focus on Code Focus
 Read the specific files from `input/<repo>.txt` listed in the Example Exercise Ideas section.
 
 Also read `training/<repo>/results/lesson_0_background.json` to check the learner's programming_experience level — calibrate difficulty accordingly (more scaffolding for beginners, denser exercises for seniors).
+
+If the blueprint contains a **Learner Background** section, apply it to exercise design:
+- Use **"Bias code examples toward"** when choosing exercise scenarios, function names, and docstring context — e.g. an ML engineer's exercises should use data-pipeline scenarios; a backend engineer's should use API/service scenarios
+- Follow **Calibration directives** to skip over-explaining concepts the user already knows
+- Use **"Use analogies from"** when writing the exercise description's "why this matters" framing
 
 Generate 2–3 exercises and write them to `training/<repo>/lessons/lesson_{N+1}/examples.json`:
 

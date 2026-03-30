@@ -19,6 +19,12 @@ Identify the latest lesson (highest N) that has a `blueprint.md` but does NOT ye
 
 1. Read `training/<repo_name>/lessons/lesson_N/blueprint.md` — focus on Lesson Content Outline, Key Concepts, Code Focus, and **What NOT to Cover**.
 2. Read `input/<repo_name>.txt` — only the files in the blueprint's Code Focus section. Be targeted.
+3. If the blueprint contains a **Learner Background** section, apply it when writing:
+   - Use **Analogy sources** when explaining every concept — ground analogies in the user's domain
+   - Follow **Calibration directives** to adjust depth — skip scaffolding the user doesn't need
+   - Respect the **Avoid** list — do not use framing or analogies from unfamiliar domains
+   - Write as if speaking to someone with that professional context, not as a generic tutorial
+   The blueprint contains everything needed — do not read `kyu.md` directly.
 
 ## Step 4: Write the Lesson
 

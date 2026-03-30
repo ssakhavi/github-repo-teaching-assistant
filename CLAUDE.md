@@ -29,6 +29,7 @@ All three commands must pass with no errors before considering a change done.
 
 ```
 input/                          # Drop <repo-name>.txt files here (git-ingest output)
+                                # Also drop cv.pdf / resume.txt / cover_letter.pdf here for KYU
 training/<repo-name>/
   curriculum.md                 # Lesson sequence plan
   lessons/lesson_N/
@@ -38,6 +39,7 @@ training/<repo-name>/
     mcq.json                    # Multiple choice questions
   results/
     lesson_0_background.json    # Learner background profile
+    kyu.md                      # Know Your User profile (optional, from CV/resume)
     lesson_N_results.json       # Per-lesson performance + feedback
 src/
   terminal_interface.py         # Main TUI (rich + readchar)
@@ -54,6 +56,7 @@ src/
 | `/generate-lesson [repo]` | Generate lesson.md from blueprint |
 | `/generate-mcq [repo]` | Generate mcq.json from blueprint |
 | `/generate-examples [repo]` | Generate examples.json from blueprint |
+| `/generate-kyu [repo]` | Synthesise CV/resume/cover letter + Lesson 0 background into a personalised kyu.md profile |
 
 ## Running the TUI
 
@@ -71,6 +74,7 @@ uv run python src/terminal_interface.py <repo_name> <lesson_number>
 
 1. User drops `<repo>.txt` into `input/`
 2. `uv run python src/terminal_interface.py <repo>` — runs background assessment (lesson 0) if not yet done
+2a. (Optional) Drop CV/resume/cover letter into `input/` (e.g. `cv.pdf`, `resume.txt`) → run `/generate-kyu` → creates `training/<repo>/results/kyu.md` for personalised lessons
 3. `/next-lesson` in Claude Code — generates full lesson (curriculum if needed → blueprint → lesson + MCQ + examples in parallel)
 4. TUI presents: paginated lesson → coding exercises → MCQ quiz → feedback collection → summary
 5. Results saved to `training/<repo>/results/lesson_N_results.json`

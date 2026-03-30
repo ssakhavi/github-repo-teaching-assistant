@@ -20,6 +20,11 @@ Identify the latest lesson (highest N) that has a `blueprint.md` but does NOT ye
 1. Read `training/<repo_name>/lessons/lesson_N/blueprint.md` — focus on **Learning Objectives**, **Key Concepts**, **MCQ Topic Areas**, **Prior Knowledge Available**, and **What NOT to Cover**.
 2. Read `input/<repo_name>.txt` — specifically the files in the blueprint's Code Focus section. Every factual claim must be verifiable against the actual code.
 3. If previous lesson blueprints exist, skim their Key Concepts sections to understand what the learner already knows.
+4. If the blueprint contains a **Learner Background** section, apply it to question framing:
+   - Use domain-appropriate scenario framing where possible (e.g. "In a production API context..." for a backend engineer; "In a data pipeline..." for an ML practitioner)
+   - Use **Calibration directives** to set distractor difficulty — senior engineers get subtler wrong answers, beginners get clearer distinctions
+   - Do not reveal content from the Learner Background section in question text itself
+   The blueprint contains everything needed — do not read `kyu.md` directly.
 
 ## Step 4: Enforce Progressive Scope
 

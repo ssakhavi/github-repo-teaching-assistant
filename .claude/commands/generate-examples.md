@@ -21,6 +21,11 @@ Identify the latest lesson (highest N) that has a `blueprint.md` but does NOT ye
 2. Read the specific files from `input/<repo_name>.txt` listed in the Example Exercise Ideas section.
 3. If previous lesson blueprints exist, skim their Key Concepts to understand what skills the learner already has.
 4. Read `training/<repo_name>/results/lesson_0_background.json` to check `programming_experience` — calibrate scaffolding accordingly (more blanks/guidance for beginners, less for seniors).
+5. If the blueprint contains a **Learner Background** section, apply it to exercise design:
+   - Use **"Bias code examples toward"** when choosing exercise scenarios, function names, and docstring context — e.g. an ML engineer's exercises should use data-pipeline scenarios; a backend engineer's should use API/service scenarios
+   - Follow **Calibration directives** to skip over-explaining concepts the user already knows well
+   - Use **"Use analogies from"** when writing the exercise description's "why this matters" framing
+   The blueprint contains everything needed — do not read `kyu.md` directly.
 
 ## Step 4: Enforce Progressive Scope
 
