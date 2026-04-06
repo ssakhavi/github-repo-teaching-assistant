@@ -59,15 +59,18 @@ jobs:
         run: |
           gh pr create \
             --title "chore: sync template infrastructure from upstream" \
-            --body "## Upstream template sync
+            --body "$(cat <<'EOF'
+## Upstream template sync
 
-Automated PR from the \`sync-upstream\` workflow.
+Automated PR from the `sync-upstream` workflow.
 
 Syncs infrastructure files from [ssakhavi/github-repo-teaching-assistant](https://github.com/ssakhavi/github-repo-teaching-assistant):
-\`src/\`, \`.claude/commands/\`, \`CLAUDE.md\`, \`pyproject.toml\`, \`uv.lock\`, \`README.md\`, \`.gitignore\`
+`src/`, `.claude/commands/`, `CLAUDE.md`, `pyproject.toml`, `uv.lock`, `README.md`, `.gitignore`
 
 **Your training data, input files, and personal customisations are not affected.**
 
-Review the diff before merging. To trigger manually: Actions → Sync from upstream template → Run workflow." \
+Review the diff before merging. To trigger manually: Actions → Sync from upstream template → Run workflow.
+EOF
+)" \
             --head "$BRANCH" \
             --base main
