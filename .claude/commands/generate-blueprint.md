@@ -31,6 +31,8 @@ If `curriculum.md` does not exist, stop:
 
 Read `input/<repo_name>.txt` — only the files listed in the Lesson N "Key files to read" entry. Do not read the whole file. Understand those files in enough detail to write accurate lesson content, exercises, and MCQ questions.
 
+When reading, focus on the **public-facing surface**: exported symbols, documented behaviour, usage patterns in docstrings, type signatures, and any embedded examples. You do not need to trace private helper functions or internal implementation details unless they are directly necessary to explain a public concept.
+
 ## Step 5: Read Previous Results (if any)
 
 Use the Glob tool to find `training/<repo_name>/results/lesson_*_results.json`. If any exist, read the most recent.
@@ -113,7 +115,8 @@ Do NOT reference these concepts anywhere in the lesson, exercises, or MCQ:
 
 ### Exercise 1: [Title] — fill_in_blank
 - **Concept tested:** [from this lesson only]
-- **Function to base it on:** [exact function from Code Focus files]
+- **Usage scenario:** [what a library user would be doing when they'd write this code]
+- **Public API elements involved:** [which exported functions/classes/methods appear in the exercise]
 - **What blanks to use:** [description of logic to omit]
 
 ### Exercise 2: [Title] — write_whole

@@ -31,8 +31,8 @@ Write a paginated lesson to `training/<repo_name>/lessons/lesson_N/lesson.md`.
 - Pages 2 through N-1: one sub-topic per page from the Content Outline
   - Use `##` headings for sections
   - Include real code snippets in fenced code blocks with language specifiers (` ```python ` etc.)
-  - Explain the "why" behind design decisions, not just the "what"
-  - Connect every concept to the actual repo code
+  - Frame every concept from the **user's perspective**: "here is what you can do with this" before "here is how it works internally." Explain design choices only when that explanation directly helps the learner use the library correctly.
+  - Connect every concept to real usage patterns from the repo's examples, tests, or documentation — prefer showing the library being called over showing its internal implementation.
 - Last page: `## Summary` — "In this lesson we covered:" with 3–5 bullets, key takeaways, preview of next lesson
 
 **CRITICAL:** Do NOT reference, mention, or hint at any concept listed under **"What NOT to Cover"** in the blueprint. Those topics belong to future lessons.

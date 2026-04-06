@@ -28,20 +28,28 @@ Read `training/<repo_name>/results/lesson_0_background.json`. Extract:
 
 ## Step 3: Analyse the Repository
 
-Read `input/<repo_name>.txt`. Start with the first 200 lines to see the file tree and understand the structure. Then read key files to understand:
-1. The project's purpose and domain
-2. Main entry points (main.py, index.js, app.py, etc.)
-3. Top-level module/folder structure
-4. Any README or documentation
+Read `input/<repo_name>.txt`. Start with the first 200 lines to see the file tree and understand the structure.
 
-**Identify structural units** (these become lesson building blocks):
-- Root-level entry points and configuration
-- Top-level modules or packages
-- Cross-cutting concerns (logging, config, errors, utils)
-- Core domain models or data structures
-- Key algorithms or workflows
-- Integration/IO layers (database, API, file system)
-- Tests and their structure
+**Read in this priority order:**
+1. `README.md` or any top-level readme — understand what the library does and how users interact with it
+2. `docs/`, `documentation/`, `doc/` — user-facing guides, tutorials, API reference
+3. `examples/`, `notebooks/`, `tutorials/`, `demos/` — real usage patterns in context
+4. `tests/` — reveals the public API surface and expected behaviour from a caller's perspective
+5. Main entry points (`__init__.py`, top-level public modules) — the public API contract
+6. `CHANGELOG.md`, `CONTRIBUTING.md` — only if they illuminate user-facing usage patterns
+
+**De-prioritise:** internal implementation modules (files named `_internal`, `_utils`, `utils.py`, private subpackages), low-level helpers, and anything not exposed in the public API.
+
+**Goal:** Understand the library from the perspective of someone who wants to USE it — what can you do with it, how do you call it, what patterns appear in real usage code?
+
+**Identify lesson units** (these become lesson building blocks):
+- The core concept or abstraction the library is built around (the "main thing" a user imports and works with)
+- Key use-case groups: what distinct tasks can the library accomplish?
+- The typical getting-started workflow (install → configure → first call → inspect results)
+- Important configuration or customisation patterns visible in docs/examples
+- Common idioms that appear repeatedly across usage examples
+- Public API surface: key classes, functions, or CLI commands a user would call
+- Integration patterns: how does it connect to other tools, files, or systems?
 
 ## Step 4: Design the Lesson Sequence
 

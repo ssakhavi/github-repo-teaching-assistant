@@ -29,6 +29,8 @@ Every exercise must practice ONLY concepts from lessons 1 through N. Do not use,
 
 ## Step 5: Design the Exercises
 
+**Usage-first framing:** Exercises simulate what a real user of the library would write — not a reimplementation of internal source code. Frame each exercise as: given this library's public API, write code that accomplishes [task]. For `fill_in_blank`, the template is user-side calling code with blanks where the learner supplies the correct call or argument pattern. For `write_whole`, the function the learner implements is something a user of the library would write (a wrapper, a processing step, an application of the library's output) — not a function that belongs inside the library itself.
+
 Generate **2 or 3** exercises.
 
 **Ordering:**
