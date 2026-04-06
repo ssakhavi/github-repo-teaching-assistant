@@ -1,0 +1,73 @@
+name: Sync from upstream template
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout downstream repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream remote and fetch
+        run: |
+          git remote add upstream https://github.com/ssakhavi/github-repo-teaching-assistant.git
+          git fetch upstream main --no-tags
+
+      - name: Detect changes in template files
+        id: detect
+        run: |
+          CHANGED=$(git diff --name-only HEAD upstream/main -- \
+            src/ .claude/commands/ CLAUDE.md pyproject.toml uv.lock README.md .gitignore)
+          if [ -z "$CHANGED" ]; then
+            echo "No changes in template files."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Changed files:"
+            echo "$CHANGED"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create sync branch and apply upstream files
+        if: steps.detect.outputs.has_changes == 'true'
+        run: |
+          BRANCH="sync/upstream-$(date +%Y-%m-%d)"
+          git branch -D "$BRANCH" 2>/dev/null || true
+          git checkout -b "$BRANCH"
+          git checkout upstream/main -- \
+            src/ .claude/commands/ CLAUDE.md pyproject.toml uv.lock README.md .gitignore
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: sync template infrastructure from upstream"
+          git push origin "$BRANCH" --force
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+
+      - name: Open Pull Request
+        if: steps.detect.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "chore: sync template infrastructure from upstream" \
+            --body "## Upstream template sync
+
+Automated PR from the \`sync-upstream\` workflow.
+
+Syncs infrastructure files from [ssakhavi/github-repo-teaching-assistant](https://github.com/ssakhavi/github-repo-teaching-assistant):
+\`src/\`, \`.claude/commands/\`, \`CLAUDE.md\`, \`pyproject.toml\`, \`uv.lock\`, \`README.md\`, \`.gitignore\`
+
+**Your training data, input files, and personal customisations are not affected.**
+
+Review the diff before merging. To trigger manually: Actions → Sync from upstream template → Run workflow." \
+            --head "$BRANCH" \
+            --base main
